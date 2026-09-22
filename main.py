@@ -4,6 +4,7 @@ import os
 import smtplib
 from email.header import Header
 from email.mime.text import MIMEText
+import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 from google import genai
@@ -91,7 +92,7 @@ prompt = f"""
 )
 def call_gemini_with_retry():
     return client.models.generate_content(
-        model="gemini-3.6-flash",
+        model="gemini-2.5-flash",
         contents=prompt,
     )
 

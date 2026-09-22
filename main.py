@@ -17,11 +17,16 @@ response = requests.get(url)
 response.encoding = response.apparent_encoding
 soup = BeautifulSoup(response.text, "html.parser")
 
-# ページのテキスト抽出
+# 【軽量化】不要なタグ（script, style, nav, footer等）を削除してトークン数を節約
+for element in soup(["script", "style", "nav", "footer", "header"]):
+    element.extract()
+
+# 本文のテキスト抽出（文字数やトークンを抑えるため、余分な空白も整理）
 page_text = soup.get_text(separator="\n", strip=True)
+# 万が一長すぎる場合の保険として、必要に応じて文字数を制限（例：最初の10000文字など）
+page_text = page_text[:10000]
 
 # 4. Gemini APIを使った要約・情報抽出
-# 環境変数からAPIキーを取得
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 

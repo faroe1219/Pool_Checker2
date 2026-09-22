@@ -1,68 +1,56 @@
 import datetime
 import os
-from google import genai
-import pypdf
 import requests
+from bs4 import BeautifulSoup
+from google import genai
 
-# 1. 今日（2026年9月22日など）の日付に合わせたPDFのURLを組み立てる
-today_str = datetime.date.today().strftime("%Y%m%d")
-pdf_url = f"https://www.nakano-sports-comm.net/?s=1&mode=n&type=008&v={today_str}"
+# 1. 本日の日付からYYYYMMDD形式の文字列を生成 (例: 20260922)
+today = datetime.date.today()
+date_str = today.strftime("%Y%m%d")
 
-print(f"Checking URL: {pdf_url}")
+# 2. URLの構築
+url = f"https://www.nakano-sports-comm.net/?s=1&mode=n&type=008&v={date_str}"
+print(f"Checking URL: {url}")
 
-try:
-  # 2. PDFファイルをダウンロード
-  response = requests.get(pdf_url)
-  response.raise_for_status()
+# 3. Webページのスクレイピング
+response = requests.get(url)
+response.encoding = response.apparent_encoding
+soup = BeautifulSoup(response.text, "html.parser")
 
-  pdf_filename = "temp_schedule.pdf"
-  with open(pdf_filename, "wb") as f:
-    f.write(response.content)
+# ページのテキスト抽出
+page_text = soup.get_text(separator="\n", strip=True)
 
-  # 3. pypdfを使ってPDFから文字を抽出する
-  reader = pypdf.PdfReader(pdf_filename)
-  pdf_text = ""
-  for page in reader.pages:
-    text = page.extract_text()
-    if text:
-      pdf_text += text + "\n"
+# 4. Gemini APIを使った要約・情報抽出
+# 環境変数からAPIキーを取得
+api_key = os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
 
-  if not pdf_text.strip():
-    print(
-        "PDFから文字を抽出できませんでした（画像形式の可能性があります）。"
-    )
-    exit(0)
-
-  # 4. Google GenAI (Gemini) を使って要約する
-  client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+# 本日の日付（月/日 曜日）をプロンプトに反映させる
+formatted_date = today.strftime("%m月%d日")
+weekdays = ["月", "火", "水", "木", "金", "土", "日"]
+weekday_str = weekdays[today.weekday()]
+date_display = f"{formatted_date}（{weekday_str}）"
 
 prompt = f"""
-以下のテキストは、鷺宮体育館プールの利用状況が記載されたPDFの内容です。
-今日（本日の日付に該当する箇所）のスケジュールを重点的に読み取り、以下の点について分かりやすく、箇条書きで要約してください。
+本日は {date_display} です。
+以下のWebページ（プール利用状況の案内およびスケジュール）の内容を読み取り、
+【本日の日付 ({date_display})】に焦点を当てて、以下の点について分かりやすく、箇条書きで要約してください。
 
-1. **本日の日付と曜日、およびその日の全体的な混雑状況・傾向**
-2. **コースの空き状況や利用制限**（何コースが一般開放されていて、どの時間帯に空いているか）
-3. **教室、イベント、団体利用の有無**（何時から何時まで、どのコースが使えないか、または全館貸切などのイベントがあるか）
-4. **利用時の重要な注意点やルール**（キャップ着用、休憩時間など）
+1. **本日のプール営業状況**（休業日ではないか、通常の営業時間内か）
+2. **コースの空き状況や利用制限**（一般開放されているコース、何コース空いているか）
+3. **教室、イベント、団体利用の有無**（本日のスケジュール表や案内の中に、教室やイベント、団体利用が入っていないか。何時から何時まで使えないコースがあるかなど）
+4. **利用時の重要な注意点やルール**（キャップ着用、休憩時間、持ち物など）
 
-【PDFの内容】
-{pdf_text}
+【Webページの内容】
+{page_text}
 """
 
-  print("AIによる要約を実行中...")
-  # ここを gemini-3.6-flash に指定しています
-  response = client.models.generate_content(
-      model="gemini-3.6-flash",
-      contents=prompt,
-  )
+print("AIによる要約を実行中...\n")
+response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=prompt,
+)
 
-  print("\n=== 【本日のプール利用状況 要約】 ===")
-  print(response.text)
-  print("======================================")
-
-  # 一時ファイルの削除
-  if os.path.exists(pdf_filename):
-    os.remove(pdf_filename)
-
-except Exception as e:
-  print(f"エラーが発生しました: {e}")
+print("=== 【本日のプール利用状況 要約】 ===")
+print(response.text)
+print("======================================")

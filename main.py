@@ -4,7 +4,8 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from google import genai
-from pypdf import PdfReader
+from google.genai.errors import ServerError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # 1. 本日の日付からYYYYMMDD形式の文字列を生成 (例: 20260922)
 today = datetime.date.today()
@@ -14,11 +15,10 @@ date_str = today.strftime("%Y%m%d")
 url = f"https://www.nakano-sports-comm.net/?s=1&mode=n&type=008&v={date_str}"
 print(f"Checking URL: {url}")
 
-# 3. ページの取得とPDFリンクの探索（または直接PDFが返る場合の処理）
+# 3. ページの取得とPDFのテキスト抽出
 response = requests.get(url)
 response.encoding = response.apparent_encoding
 
-# レスポンスがPDFのバイナリデータ、またはPDFへのリンクが含まれているかを判定
 pdf_text = ""
 if response.content.startswith(b"%PDF"):
     print("直接PDFファイルが取得されました。テキストを抽出します。")
@@ -29,7 +29,6 @@ if response.content.startswith(b"%PDF"):
             if extracted:
                 pdf_text += extracted + "\n"
 else:
-    # HTMLの場合、中にPDFへのリンク（.pdf）があるか探す
     soup = BeautifulSoup(response.text, "html.parser")
     pdf_link = None
     for a in soup.find_all("a", href=True):
@@ -39,7 +38,6 @@ else:
 
     if pdf_link:
         if not pdf_link.startswith("http"):
-            # 相対パスの場合は絶対パスに変換
             from urllib.parse import urljoin
             pdf_link = urljoin(url, pdf_link)
         
@@ -52,20 +50,18 @@ else:
                 if extracted:
                     pdf_text += extracted + "\n"
     else:
-        # PDFが見つからない場合は通常のHTMLテキストとして取得
         print("PDFリンクが見つからないため、ページ内のテキストを使用します。")
         for element in soup(["script", "style", "nav", "footer", "header"]):
             element.extract()
         pdf_text = soup.get_text(separator="\n", strip=True)
 
-# 文字数制限（必要に応じて）
+# 文字数制限
 pdf_text = pdf_text[:10000]
 
-# 4. Gemini APIを使った要約・情報抽出
+# 4. Gemini APIを使った要約（サーバー混雑(503)時に自動で数回リトライする関数）
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# 本日の日付（月/日 曜日）をプロンプトに反映させる
 formatted_date = today.strftime("%m月%d日")
 weekdays = ["月", "火", "水", "木", "金", "土", "日"]
 weekday_str = weekdays[today.weekday()]
@@ -85,11 +81,20 @@ prompt = f"""
 {pdf_text}
 """
 
-print("AIによる要約を実行中...\n")
-response = client.models.generate_content(
-    model="gemini-3.6-flash",
-    contents=prompt,
+@retry(
+    stop=stop_after_attempt(5),  # 最大5回まで再試行
+    wait=wait_exponential(multiplier=2, min=4, max=30), # 待機時間を徐々に増やす（4秒、8秒、16秒...）
+    retry=retry_if_exception_type(ServerError), # サーバーエラー(503等)のときだけリトライ
+    reraise=True
 )
+def call_gemini_with_retry():
+    return client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=prompt,
+    )
+
+print("AIによる要約を実行中（混雑時は自動リトライします）...\n")
+response = call_gemini_with_retry()
 
 print("=== 【本日のプール利用状況 要約】 ===")
 print(response.text)

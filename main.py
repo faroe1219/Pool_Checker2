@@ -3,6 +3,7 @@ import io
 import os
 import requests
 from bs4 import BeautifulSoup
+from pypdf import PdfReader
 from google import genai
 from google.genai.errors import ServerError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -11,7 +12,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 today = datetime.date.today()
 date_str = today.strftime("%Y%m%d")
 
-# 2. URLの構築（中野区のスケジュールサイト等）
+# 2. URLの構築（中野区のスケジュールサイト）
 url = f"https://www.nakano-sports-comm.net/?s=1&mode=n&type=008&v={date_str}"
 print(f"Checking URL: {url}")
 
@@ -55,10 +56,10 @@ else:
             element.extract()
         pdf_text = soup.get_text(separator="\n", strip=True)
 
-# 文字数制限
+# テキストの切り詰め（安全のため最大10000文字）
 pdf_text = pdf_text[:10000]
 
-# 4. Gemini APIを使った要約（サーバー混雑(503)時に自動で数回リトライする関数）
+# 4. Gemini APIを使った要約処理（自動リトライ機能付き）
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -82,9 +83,9 @@ prompt = f"""
 """
 
 @retry(
-    stop=stop_after_attempt(5),  # 最大5回まで再試行
-    wait=wait_exponential(multiplier=2, min=4, max=30), # 待機時間を徐々に増やす（4秒、8秒、16秒...）
-    retry=retry_if_exception_type(ServerError), # サーバーエラー(503等)のときだけリトライ
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=4, max=30),
+    retry=retry_if_exception_type(ServerError),
     reraise=True
 )
 def call_gemini_with_retry():
@@ -93,7 +94,7 @@ def call_gemini_with_retry():
         contents=prompt,
     )
 
-print("AIによる要約を実行中（混雑時は自動リトライします）...\n")
+print("AIによる要約を実行中...\n")
 response = call_gemini_with_retry()
 
 print("=== 【本日のプール利用状況 要約】 ===")

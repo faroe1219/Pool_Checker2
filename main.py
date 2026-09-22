@@ -92,7 +92,7 @@ prompt = f"""
 )
 def call_gemini_with_retry():
     return client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=prompt,
     )
 

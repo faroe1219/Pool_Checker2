@@ -1,18 +1,20 @@
 import datetime
 import io
 import os
-import requests
+import smtplib
+from email.header import Header
+from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 from google import genai
 from google.genai.errors import ServerError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-# 1. 本日の日付からYYYYMMDD形式の文字列を生成 (例: 20260922)
+# 1. 本日の日付からYYYYMMDD形式の文字列を生成
 today = datetime.date.today()
 date_str = today.strftime("%Y%m%d")
 
-# 2. URLの構築（中野区のスケジュールサイト）
+# 2. URLの構築
 url = f"https://www.nakano-sports-comm.net/?s=1&mode=n&type=008&v={date_str}"
 print(f"Checking URL: {url}")
 
@@ -56,10 +58,9 @@ else:
             element.extract()
         pdf_text = soup.get_text(separator="\n", strip=True)
 
-# テキストの切り詰め（安全のため最大10000文字）
 pdf_text = pdf_text[:10000]
 
-# 4. Gemini APIを使った要約処理（自動リトライ機能付き）
+# 4. Gemini APIを使った要約処理
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -100,3 +101,28 @@ response = call_gemini_with_retry()
 print("=== 【本日のプール利用状況 要約】 ===")
 print(response.text)
 print("======================================")
+
+# 5. メール送信処理 (nobumatu@hotmail.com へ送信)
+sender_email = "nobumatu@hotmail.com"
+receiver_email = "nobumatu@hotmail.com"
+mail_password = os.environ.get("MAIL_PASSWORD")
+
+if mail_password:
+    try:
+        subject = f"【プール利用状況】{date_display}の要約"
+        msg = MIMEText(response.text, "plain", "utf-8")
+        msg["Subject"] = Header(subject, "utf-8")
+        msg["From"] = sender_email
+        msg["To"] = receiver_email
+
+        print("\nメールを送信中...")
+        with smtplib.SMTP("smtp-mail.outlook.com", 587) as server:
+            server.starttls()
+            server.login(sender_email, mail_password)
+            server.sendmail(sender_email, [receiver_email], msg.as_string())
+        print("メールの送信が完了しました！")
+        
+    except Exception as e:
+        print(f"メール送信に失敗しました: {e}")
+else:
+    print("MAIL_PASSWORDが設定されていないため、メール送信をスキップします。")

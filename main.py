@@ -106,7 +106,7 @@ print("======================================")
 # 5. メール送信処理 (nobumatu@hotmail.com へ送信)
 sender_email = "nobumatu@hotmail.com"
 receiver_email = "nobumatu@hotmail.com"
-mail_password = os.environ.get("MAIL_PASSWORD")
+mail_password = os.environ.get("nmaT1074")
 
 if mail_password:
     try:

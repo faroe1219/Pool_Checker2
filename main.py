@@ -103,10 +103,10 @@ print("=== 【本日のプール利用状況 要約】 ===")
 print(response.text)
 print("======================================")
 
-# 5. メール送信処理 (指定したGmailへ送信)
-sender_email = "nobumatu@hotmail.com"
-receiver_email = "あなたの受信したいGmailアドレス@gmail.com"  # ←ご自身のGmailに変更してください
-mail_password = os.environ.get("MAIL_PASSWORD")  # ★ここが抜けていたためエラーになっていました
+# 5. メール送信処理 (Gmail経由で送信)
+sender_email = "faroe1219@gmail.com"  # ←ご自身のGmailアドレスを入力してください
+receiver_email = "nobumatu@hotmail.com"                  # ←受け取りたいアドレス
+mail_password = os.environ.get("MAIL_PASSWORD")
 
 if mail_password:
     try:
@@ -116,8 +116,8 @@ if mail_password:
         msg["From"] = sender_email
         msg["To"] = receiver_email
 
-        print("\nメールを送信中...")
-        with smtplib.SMTP("smtp-mail.outlook.com", 587) as server:
+        print("\nメールを送信中 (Gmail SMTP)...")
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
             server.login(sender_email, mail_password)
             server.sendmail(sender_email, [receiver_email], msg.as_string())

@@ -1,13 +1,11 @@
 import datetime
 import os
 from google import genai
-from google.genai import types
 import pypdf
 import requests
 
 # 1. 今日（2026年9月22日など）の日付に合わせたPDFのURLを組み立てる
 today_str = datetime.date.today().strftime("%Y%m%d")
-# ご提示いただいたURLの規則に合わせ、今日の付番を自動生成します
 pdf_url = f"https://www.nakano-sports-comm.net/?s=1&mode=n&type=008&v={today_str}"
 
 print(f"Checking URL: {pdf_url}")
@@ -17,7 +15,6 @@ try:
   response = requests.get(pdf_url)
   response.raise_for_status()
 
-  # 一時的にファイルとして保存
   pdf_filename = "temp_schedule.pdf"
   with open(pdf_filename, "wb") as f:
     f.write(response.content)
@@ -37,7 +34,6 @@ try:
     exit(0)
 
   # 4. Google GenAI (Gemini) を使って要約する
-  # GitHubに登録した秘密のキーを使ってAIを初期化します
   client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
   prompt = f"""
@@ -49,6 +45,7 @@ try:
 """
 
   print("AIによる要約を実行中...")
+  # ここを gemini-3.6-flash に指定しています
   response = client.models.generate_content(
       model="gemini-3.6-flash",
       contents=prompt,
@@ -58,7 +55,7 @@ try:
   print(response.text)
   print("======================================")
 
-  # 使い終わった一時ファイルを削除
+  # 一時ファイルの削除
   if os.path.exists(pdf_filename):
     os.remove(pdf_filename)
 

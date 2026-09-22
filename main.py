@@ -103,10 +103,9 @@ print("=== 【本日のプール利用状況 要約】 ===")
 print(response.text)
 print("======================================")
 
-# 5. メール送信処理 (nobumatu@hotmail.com へ送信)
+# 5. メール送信処理 (指定したGmailへ送信)
 sender_email = "nobumatu@hotmail.com"
-receiver_email = "nobumatu@hotmail.com"
-mail_password = os.environ.get("nmaT1074")
+receiver_email = "faroe1219@gmail.com"
 
 if mail_password:
     try:

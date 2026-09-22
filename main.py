@@ -3,7 +3,7 @@ import os
 from google import genai
 import pypdf
 import requests
-　
+
 # 1. 今日（2026年9月22日など）の日付に合わせたPDFのURLを組み立てる
 today_str = datetime.date.today().strftime("%Y%m%d")
 pdf_url = f"https://www.nakano-sports-comm.net/?s=1&mode=n&type=008&v={today_str}"

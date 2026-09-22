@@ -105,7 +105,8 @@ print("======================================")
 
 # 5. メール送信処理 (指定したGmailへ送信)
 sender_email = "nobumatu@hotmail.com"
-receiver_email = "faroe1219@gmail.com"
+receiver_email = "あなたの受信したいGmailアドレス@gmail.com"  # ←ご自身のGmailに変更してください
+mail_password = os.environ.get("MAIL_PASSWORD")  # ★ここが抜けていたためエラーになっていました
 
 if mail_password:
     try:

@@ -94,7 +94,6 @@ prompt = f"""
 【利用データのテキスト】
 {pdf_text}
 """
-"""
 
 @retry(
     stop=stop_after_attempt(5),

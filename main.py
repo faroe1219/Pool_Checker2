@@ -115,14 +115,19 @@ print(response.text)
 print("======================================")
 
 # 5. メール送信処理 (Gmail経由で送信)
-sender_email = "faroe1219@gmail.com"  # ←ご自身のGmailアドレスを入力してください
-receiver_email = "nobumatu@hotmail.com"                  # ←受け取りたいアドレス
+sender_email = "あなたのGmailアドレス@gmail.com"  # ご自身のGmailアドレスに書き換えてください
+receiver_email = "nobumatu@hotmail.com"          # 受け取りたいアドレス
 mail_password = os.environ.get("MAIL_PASSWORD")
 
 if mail_password:
     try:
         subject = f"【プール利用状況】{date_display}の要約"
-        msg = MIMEText(response.text, "plain", "utf-8")
+        
+        # 指定の個人利用案内ページURLを本文末尾に追加
+        pool_url = "https://www.nakano-sports-comm.net/saginomiya/personal/"
+        body_content = f"{response.text}\n\n---------------------------------\n■ 鷺ノ宮スポーツ・コミュニティプラザ 個人利用案内（公式サイト）\n{pool_url}"
+        
+        msg = MIMEText(body_content, "plain", "utf-8")
         msg["Subject"] = Header(subject, "utf-8")
         msg["From"] = sender_email
         msg["To"] = receiver_email

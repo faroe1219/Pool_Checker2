@@ -123,9 +123,9 @@ if mail_password:
     try:
         subject = f"【プール利用状況】{date_display}の要約"
         
-        # 指定の個人利用案内ページURLを本文末尾に追加
+        # リンクを冒頭に配置し、その下にAIの要約文を続ける形に修正
         pool_url = "https://www.nakano-sports-comm.net/saginomiya/personal/"
-        body_content = f"{response.text}\n\n---------------------------------\n■ 鷺ノ宮スポーツ・コミュニティプラザ 個人利用案内（公式サイト）\n{pool_url}"
+        body_content = f"■ 鷺ノ宮スポーツ・コミュニティプラザ 個人利用案内（公式サイト）\n{pool_url}\n\n---------------------------------\n{response.text}"
         
         msg = MIMEText(body_content, "plain", "utf-8")
         msg["Subject"] = Header(subject, "utf-8")
